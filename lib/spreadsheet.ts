@@ -5,14 +5,11 @@ export interface ParsedSpreadsheet {
   rows: Record<string, string>[]
 }
 
-// Campos do sistema que o especialista deve mapear
+// Campos fixos que o especialista deve mapear explicitamente
 export const SYSTEM_FIELDS = [
   { key: 'student_name', label: 'Nome do aluno', required: true },
   { key: 'objective', label: 'Objetivo principal', required: true },
   { key: 'context', label: 'Contexto / Histórico', required: false },
-  { key: 'extra_1', label: 'Campo extra 1', required: false },
-  { key: 'extra_2', label: 'Campo extra 2', required: false },
-  { key: 'extra_3', label: 'Campo extra 3', required: false },
 ]
 
 // Palavras-chave para auto-detecção de colunas
@@ -54,17 +51,30 @@ export function suggestMapping(columns: string[]): Record<string, string> {
   return mapping
 }
 
-// Aplica mapeamento a uma linha e retorna dados estruturados do aluno
+// Aplica mapeamento a uma linha e retorna dados estruturados do aluno.
+// Os campos mapeados ficam com chave de sistema; as colunas restantes são
+// incluídas automaticamente com a chave original da planilha.
 export function applyMapping(
   row: Record<string, string>,
   mapping: Record<string, string>
 ): Record<string, string> {
   const result: Record<string, string> = {}
+
+  // Campos mapeados explicitamente
+  const mappedColumns = new Set(Object.values(mapping).filter(Boolean))
   for (const [fieldKey, colName] of Object.entries(mapping)) {
     if (colName && row[colName] !== undefined) {
       result[fieldKey] = row[colName]
     }
   }
+
+  // Todas as demais colunas entram com o nome original
+  for (const [col, value] of Object.entries(row)) {
+    if (!mappedColumns.has(col) && value?.trim()) {
+      result[col] = value
+    }
+  }
+
   return result
 }
 
@@ -84,14 +94,30 @@ export function validateStudentData(
   return errors
 }
 
-// Formata dados do aluno como texto estruturado para o LLM
+// Formata dados do aluno como texto estruturado para o LLM.
+// Os campos de sistema recebem labels legíveis; os demais usam o nome da coluna.
 export function formatStudentData(data: Record<string, string>): string {
   const lines: string[] = []
+  const systemKeys = new Set(SYSTEM_FIELDS.map((f) => f.key))
+  const systemLabels: Record<string, string> = Object.fromEntries(
+    SYSTEM_FIELDS.map((f) => [f.key, f.label])
+  )
+
+  // Campos de sistema primeiro
   for (const field of SYSTEM_FIELDS) {
     const value = data[field.key]
     if (value?.trim()) {
       lines.push(`${field.label}: ${value.trim()}`)
     }
   }
+
+  // Demais colunas da planilha
+  for (const [key, value] of Object.entries(data)) {
+    if (!systemKeys.has(key) && value?.trim()) {
+      const label = systemLabels[key] ?? key
+      lines.push(`${label}: ${value.trim()}`)
+    }
+  }
+
   return lines.join('\n')
 }

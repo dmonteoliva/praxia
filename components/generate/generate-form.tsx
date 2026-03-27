@@ -201,6 +201,28 @@ export function GenerateForm({ savedMapping }: Props) {
                 )}
               </div>
             ))}
+
+            {/* Colunas extras incluídas automaticamente */}
+            {(() => {
+              const mappedCols = new Set(Object.values(mapping).filter(Boolean))
+              const extras = spreadsheet.columns.filter((c) => !mappedCols.has(c))
+              if (extras.length === 0) return null
+              return (
+                <div className="rounded-md border border-dashed p-3 space-y-1.5">
+                  <p className="text-xs font-medium text-muted-foreground">
+                    {extras.length} coluna{extras.length > 1 ? 's' : ''} incluída{extras.length > 1 ? 's' : ''} automaticamente no contexto do Claude:
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {extras.map((col) => (
+                      <Badge key={col} variant="secondary" className="text-xs font-normal">
+                        {col}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )
+            })()}
+
             {error && <p className="text-sm text-destructive">{error}</p>}
             <div className="flex justify-end pt-2">
               <Button onClick={handleSaveMapping}>
