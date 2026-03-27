@@ -17,7 +17,7 @@ interface Props {
 }
 
 const PROVIDERS: { value: Provider; label: string; model: string }[] = [
-  { value: 'anthropic', label: 'Anthropic', model: 'claude-opus-4-6' },
+  { value: 'anthropic', label: 'Anthropic', model: 'claude-sonnet-4-6' },
   { value: 'openai', label: 'OpenAI', model: 'gpt-4o' },
   { value: 'gemini', label: 'Google Gemini', model: 'gemini-2.0-flash' },
 ]

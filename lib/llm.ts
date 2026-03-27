@@ -39,7 +39,7 @@ async function generateWithAnthropic(params: GenerateDossierParams): Promise<str
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
       const message = await client.messages.create({
-        model: 'claude-opus-4-6',
+        model: 'claude-sonnet-4-6',
         max_tokens: 4096,
         system: buildSystemPrompt(params.expertPrompt),
         messages: [{ role: 'user', content: buildMessages(params.methodologyContext, params.studentData) }],
