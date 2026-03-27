@@ -111,6 +111,37 @@ export async function addDocument(formData: FormData) {
   revalidatePath('/knowledge-base')
 }
 
+export async function updateDocument(formData: FormData) {
+  const id = formData.get('id') as string
+  const title = formData.get('title') as string
+  const content = formData.get('content') as string
+
+  if (!content?.trim()) return { error: 'Conteúdo obrigatório' }
+
+  const specialistId = await getSpecialistId()
+  const supabase = await createClient()
+
+  const { data: doc } = await supabase
+    .from('documents')
+    .select('id, knowledge_bases!inner(specialist_id)')
+    .eq('id', id)
+    .single()
+
+  const kb = (doc?.knowledge_bases as unknown) as { specialist_id: string } | null
+  if (!doc || kb?.specialist_id !== specialistId) {
+    return { error: 'Documento não encontrado' }
+  }
+
+  const { error } = await supabase
+    .from('documents')
+    .update({ title: title?.trim() || null, content: content.trim() })
+    .eq('id', id)
+
+  if (error) return { error: error.message }
+
+  revalidatePath('/knowledge-base')
+}
+
 export async function deleteDocument(id: string) {
   const specialistId = await getSpecialistId()
   const supabase = await createClient()

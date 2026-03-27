@@ -5,6 +5,7 @@ import { Separator } from '@/components/ui/separator'
 import { CreateKbDialog } from '@/components/knowledge-base/create-kb-dialog'
 import { AddDocumentDialog } from '@/components/knowledge-base/add-document-dialog'
 import { DeleteKbButton, DeleteDocButton } from '@/components/knowledge-base/delete-button'
+import { EditDocumentDialog } from '@/components/knowledge-base/edit-document-dialog'
 import { BookOpen, FileText } from 'lucide-react'
 
 export default async function KnowledgeBasePage() {
@@ -15,7 +16,7 @@ export default async function KnowledgeBasePage() {
     .from('knowledge_bases')
     .select(`
       id, name, created_at,
-      documents (id, title, created_at)
+      documents (id, title, content, created_at)
     `)
     .eq('specialist_id', user!.id)
     .order('created_at', { ascending: false })
@@ -86,6 +87,11 @@ export default async function KnowledgeBasePage() {
                               <span className="text-xs text-muted-foreground">
                                 {new Date(doc.created_at).toLocaleDateString('pt-BR')}
                               </span>
+                              <EditDocumentDialog
+                                id={doc.id}
+                                title={doc.title ?? null}
+                                content={doc.content ?? ''}
+                              />
                               <DeleteDocButton id={doc.id} />
                             </div>
                           </div>
