@@ -1,0 +1,121 @@
+'use server'
+
+import { revalidatePath } from 'next/cache'
+import { createClient, createServiceClient } from '@/lib/supabase/server'
+import { chunkText, generateEmbeddings } from '@/lib/embeddings'
+
+async function getSpecialistId() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Não autenticado')
+  return user.id
+}
+
+// ── Knowledge Bases ──────────────────────────────────────────────────────────
+
+export async function createKnowledgeBase(formData: FormData) {
+  const name = formData.get('name') as string
+  if (!name?.trim()) return { error: 'Nome obrigatório' }
+
+  const specialistId = await getSpecialistId()
+  const supabase = await createClient()
+
+  const { error } = await supabase
+    .from('knowledge_bases')
+    .insert({ specialist_id: specialistId, name: name.trim() })
+
+  if (error) return { error: error.message }
+
+  revalidatePath('/knowledge-base')
+}
+
+export async function deleteKnowledgeBase(id: string) {
+  const specialistId = await getSpecialistId()
+  const supabase = await createClient()
+
+  // RLS garante que só o dono pode deletar; CASCADE remove documentos e embeddings
+  const { error } = await supabase
+    .from('knowledge_bases')
+    .delete()
+    .eq('id', id)
+    .eq('specialist_id', specialistId)
+
+  if (error) return { error: error.message }
+
+  revalidatePath('/knowledge-base')
+}
+
+// ── Documents ────────────────────────────────────────────────────────────────
+
+export async function addDocument(formData: FormData) {
+  const knowledgeBaseId = formData.get('knowledge_base_id') as string
+  const title = formData.get('title') as string
+  const content = formData.get('content') as string
+
+  if (!content?.trim()) return { error: 'Conteúdo obrigatório' }
+
+  const specialistId = await getSpecialistId()
+
+  // Verifica que a base pertence ao especialista
+  const supabase = await createClient()
+  const { data: kb } = await supabase
+    .from('knowledge_bases')
+    .select('id')
+    .eq('id', knowledgeBaseId)
+    .eq('specialist_id', specialistId)
+    .single()
+
+  if (!kb) return { error: 'Base de conhecimento não encontrada' }
+
+  // Insere documento
+  const { data: doc, error: docError } = await supabase
+    .from('documents')
+    .insert({ knowledge_base_id: knowledgeBaseId, title: title?.trim() || null, content: content.trim() })
+    .select('id')
+    .single()
+
+  if (docError) return { error: docError.message }
+
+  // Gera chunks e embeddings
+  const chunks = chunkText(content.trim())
+  if (chunks.length === 0) return { error: 'Conteúdo muito curto' }
+
+  const embeddings = await generateEmbeddings(chunks)
+
+  // Insere embeddings via service role (contorna RLS para insert em massa)
+  const serviceClient = await createServiceClient()
+  const rows = chunks.map((chunk, i) => ({
+    document_id: doc.id,
+    chunk_text: chunk,
+    embedding: JSON.stringify(embeddings[i]),
+    metadata: { position: i, total: chunks.length },
+  }))
+
+  const { error: embError } = await serviceClient.from('embeddings').insert(rows)
+  if (embError) return { error: embError.message }
+
+  revalidatePath('/knowledge-base')
+}
+
+export async function deleteDocument(id: string) {
+  const specialistId = await getSpecialistId()
+  const supabase = await createClient()
+
+  // Verifica propriedade via join
+  const { data: doc } = await supabase
+    .from('documents')
+    .select('id, knowledge_bases!inner(specialist_id)')
+    .eq('id', id)
+    .single()
+
+  const kb = (doc?.knowledge_bases as unknown) as { specialist_id: string } | null
+  if (!doc || kb?.specialist_id !== specialistId) {
+    return { error: 'Documento não encontrado' }
+  }
+
+  // CASCADE remove embeddings
+  const { error } = await supabase.from('documents').delete().eq('id', id)
+  if (error) return { error: error.message }
+
+  revalidatePath('/knowledge-base')
+}
