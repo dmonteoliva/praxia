@@ -1,8 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { createClient, createServiceClient } from '@/lib/supabase/server'
-import { chunkText, generateEmbeddings } from '@/lib/embeddings'
+import { createClient } from '@/lib/supabase/server'
 
 async function getSpecialistId() {
   const supabase = await createClient()
@@ -103,31 +102,11 @@ export async function addDocument(formData: FormData) {
   if (!kb) return { error: 'Base de conhecimento não encontrada' }
 
   // Insere documento
-  const { data: doc, error: docError } = await supabase
+  const { error: docError } = await supabase
     .from('documents')
     .insert({ knowledge_base_id: knowledgeBaseId, title: title?.trim() || null, content: content.trim() })
-    .select('id')
-    .single()
 
   if (docError) return { error: docError.message }
-
-  // Gera chunks e embeddings
-  const chunks = chunkText(content.trim())
-  if (chunks.length === 0) return { error: 'Conteúdo muito curto' }
-
-  const embeddings = await generateEmbeddings(chunks)
-
-  // Insere embeddings via service role (contorna RLS para insert em massa)
-  const serviceClient = await createServiceClient()
-  const rows = chunks.map((chunk, i) => ({
-    document_id: doc.id,
-    chunk_text: chunk,
-    embedding: JSON.stringify(embeddings[i]),
-    metadata: { position: i, total: chunks.length },
-  }))
-
-  const { error: embError } = await serviceClient.from('embeddings').insert(rows)
-  if (embError) return { error: embError.message }
 
   revalidatePath('/knowledge-base')
 }

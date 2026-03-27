@@ -1,7 +1,6 @@
 'use server'
 
 import { createClient, createServiceClient } from '@/lib/supabase/server'
-import { retrieveChunks, formatChunksAsContext } from '@/lib/rag'
 import { generateDossier } from '@/lib/llm'
 import { formatStudentData } from '@/lib/spreadsheet'
 import { generatePDFBuffer } from '@/lib/pdf/generator'
@@ -32,19 +31,18 @@ export async function generateDossierAction(
   }
 
   const studentName = studentData['student_name'] || 'Aluno'
-  const queryText = [studentData['objective'], studentData['context']]
-    .filter(Boolean)
-    .join(' ')
 
-  // 1. RAG: recupera chunks relevantes
-  let methodologyContext = ''
-  try {
-    const chunks = await retrieveChunks(queryText, user.id, 6)
-    methodologyContext = formatChunksAsContext(chunks)
-  } catch {
-    // Se RAG falhar, continua sem contexto (geração ainda pode ser útil)
-    console.warn('RAG falhou, gerando sem contexto de metodologia')
-  }
+  // 1. Busca todos os documentos da base de conhecimento do especialista
+  const { data: documents } = await supabase
+    .from('documents')
+    .select('title, content, knowledge_bases!inner(specialist_id)')
+    .eq('knowledge_bases.specialist_id', user.id)
+
+  const methodologyContext = documents?.length
+    ? documents
+        .map((doc) => (doc.title ? `## ${doc.title}\n\n${doc.content}` : doc.content))
+        .join('\n\n---\n\n')
+    : ''
 
   // 2. Formata dados do aluno
   const formattedStudentData = formatStudentData(studentData)
