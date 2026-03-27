@@ -47,10 +47,44 @@ export async function deleteKnowledgeBase(id: string) {
 
 // ── Documents ────────────────────────────────────────────────────────────────
 
+async function extractTextFromFile(file: File): Promise<string> {
+  const bytes = await file.arrayBuffer()
+  const buffer = Buffer.from(bytes)
+  const name = file.name.toLowerCase()
+
+  if (name.endsWith('.txt') || name.endsWith('.md')) {
+    return buffer.toString('utf-8')
+  }
+
+  if (name.endsWith('.docx')) {
+    const mammoth = (await import('mammoth')).default
+    const result = await mammoth.extractRawText({ buffer })
+    return result.value
+  }
+
+  if (name.endsWith('.pdf')) {
+    const pdfParse = (await import('pdf-parse')).default
+    const result = await pdfParse(buffer)
+    return result.text
+  }
+
+  throw new Error('Formato de arquivo não suportado')
+}
+
 export async function addDocument(formData: FormData) {
   const knowledgeBaseId = formData.get('knowledge_base_id') as string
   const title = formData.get('title') as string
-  const content = formData.get('content') as string
+  const file = formData.get('file') as File | null
+
+  let content = formData.get('content') as string
+
+  if (file && file.size > 0) {
+    try {
+      content = await extractTextFromFile(file)
+    } catch (e: unknown) {
+      return { error: e instanceof Error ? e.message : 'Erro ao ler arquivo' }
+    }
+  }
 
   if (!content?.trim()) return { error: 'Conteúdo obrigatório' }
 
