@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { ExpertPromptForm } from '@/components/settings/expert-prompt-form'
 import { ProfileForm } from '@/components/settings/profile-form'
+import { AIProviderForm } from '@/components/settings/ai-provider-form'
 import { Separator } from '@/components/ui/separator'
 
 export default async function SettingsPage() {
@@ -9,7 +10,7 @@ export default async function SettingsPage() {
 
   const { data: specialist } = await supabase
     .from('specialists')
-    .select('name, logo_url, expert_prompt')
+    .select('name, logo_url, expert_prompt, ai_provider, openai_api_key, anthropic_api_key, gemini_api_key')
     .eq('id', user!.id)
     .single()
 
@@ -30,6 +31,21 @@ export default async function SettingsPage() {
         <ProfileForm
           defaultName={specialist?.name ?? ''}
           defaultLogoUrl={specialist?.logo_url ?? ''}
+        />
+      </div>
+
+      <Separator />
+
+      <div className="space-y-2">
+        <h3 className="text-lg font-semibold">Inteligência Artificial</h3>
+        <p className="text-sm text-muted-foreground">
+          Escolha qual IA usar para gerar os dossiês e cadastre suas chaves de API.
+        </p>
+        <AIProviderForm
+          defaultProvider={(specialist?.ai_provider ?? 'anthropic') as 'anthropic' | 'openai' | 'gemini'}
+          hasAnthropicKey={!!specialist?.anthropic_api_key}
+          hasOpenAIKey={!!specialist?.openai_api_key}
+          hasGeminiKey={!!specialist?.gemini_api_key}
         />
       </div>
 

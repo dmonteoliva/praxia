@@ -1,7 +1,7 @@
 'use server'
 
 import { createClient, createServiceClient } from '@/lib/supabase/server'
-import { generateDossier } from '@/lib/llm'
+import { generateDossier, type AIProvider } from '@/lib/llm'
 import { formatStudentData } from '@/lib/spreadsheet'
 import { generatePDFBuffer } from '@/lib/pdf/generator'
 
@@ -21,13 +21,24 @@ export async function generateDossierAction(
   // Busca dados do especialista
   const { data: specialist } = await supabase
     .from('specialists')
-    .select('name, logo_url, expert_prompt')
+    .select('name, logo_url, expert_prompt, ai_provider, openai_api_key, anthropic_api_key, gemini_api_key')
     .eq('id', user.id)
     .single()
 
   if (!specialist) return { error: 'Especialista não encontrado' }
   if (!specialist.expert_prompt) {
     return { error: 'Configure seu prompt de instrução antes de gerar dossiês.' }
+  }
+
+  const provider = (specialist.ai_provider ?? 'anthropic') as AIProvider
+  const apiKeyMap: Record<AIProvider, string | null> = {
+    anthropic: specialist.anthropic_api_key ?? process.env.ANTHROPIC_API_KEY ?? null,
+    openai: specialist.openai_api_key ?? process.env.OPENAI_API_KEY ?? null,
+    gemini: specialist.gemini_api_key ?? null,
+  }
+  const apiKey = apiKeyMap[provider]
+  if (!apiKey) {
+    return { error: `Chave de API para ${provider} não configurada. Acesse Configurações → IA.` }
   }
 
   const studentName = studentData['student_name'] || 'Aluno'
@@ -54,6 +65,8 @@ export async function generateDossierAction(
       expertPrompt: specialist.expert_prompt,
       methodologyContext,
       studentData: formattedStudentData,
+      provider,
+      apiKey,
     })
   } catch (err) {
     return { error: `Erro na geração: ${err instanceof Error ? err.message : 'erro desconhecido'}` }
