@@ -58,15 +58,40 @@ ${studentData}
 Com base nas informações acima, gere um plano de ação completo e personalizado para este aluno seguindo todas as instruções do sistema.
 `.trim()
 
-  const message = await anthropic.messages.create({
-    model: 'claude-opus-4-6',
-    max_tokens: 4096,
-    system: systemPrompt,
-    messages: [{ role: 'user', content: userMessage }],
-  })
+  const MAX_RETRIES = 2
+  let lastError: Error | null = null
 
-  const content = message.content[0]
-  if (content.type !== 'text') throw new Error('Resposta inesperada do modelo')
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const message = await anthropic.messages.create({
+        model: 'claude-opus-4-6',
+        max_tokens: 4096,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: userMessage }],
+      })
 
-  return content.text
+      const content = message.content[0]
+      if (content.type !== 'text') throw new Error('Resposta inesperada do modelo')
+      return content.text
+    } catch (err: unknown) {
+      const isOverloaded =
+        err instanceof Error &&
+        (err.message.includes('overloaded') || err.message.includes('529'))
+
+      if (isOverloaded && attempt < MAX_RETRIES) {
+        await new Promise((r) => setTimeout(r, 5000 * (attempt + 1)))
+        continue
+      }
+
+      lastError = err instanceof Error ? err : new Error(String(err))
+
+      if (isOverloaded) {
+        throw new Error('A API do Claude está sobrecarregada no momento. Tente novamente em alguns instantes.')
+      }
+
+      throw lastError
+    }
+  }
+
+  throw lastError ?? new Error('Falha na geração')
 }
