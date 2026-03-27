@@ -8,15 +8,11 @@ export interface ParsedSpreadsheet {
 // Campos fixos que o especialista deve mapear explicitamente
 export const SYSTEM_FIELDS = [
   { key: 'student_name', label: 'Nome do aluno', required: true },
-  { key: 'objective', label: 'Objetivo principal', required: true },
-  { key: 'context', label: 'Contexto / Histórico', required: false },
 ]
 
 // Palavras-chave para auto-detecção de colunas
 const AUTO_DETECT_HINTS: Record<string, string[]> = {
   student_name: ['nome', 'name', 'aluno', 'cliente', 'paciente', 'student'],
-  objective: ['objetivo', 'meta', 'goal', 'objective', 'proposito', 'propósito'],
-  context: ['contexto', 'histórico', 'historico', 'context', 'background', 'observação', 'observacao', 'obs'],
 }
 
 export function parseSpreadsheet(buffer: ArrayBuffer): ParsedSpreadsheet {
