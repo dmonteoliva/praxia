@@ -37,23 +37,21 @@ export default async function GeneratePage() {
       </div>
 
       {missingSetup.length > 0 && (
-        <div className="flex items-start gap-3 p-4 rounded-md border border-yellow-200 bg-yellow-50 dark:border-yellow-900 dark:bg-yellow-950/20">
-          <AlertCircle className="h-4 w-4 text-yellow-600 mt-0.5 shrink-0" />
+        <div className="flex items-start gap-3 p-4 rounded-xl border bg-muted/50">
+          <AlertCircle className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
           <div>
-            <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
-              Setup incompleto
-            </p>
-            <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-0.5">
+            <p className="text-sm font-medium">Setup incompleto</p>
+            <p className="text-sm text-muted-foreground mt-0.5">
               Configure {missingSetup.join(' e ')} antes de gerar dossiês.{' '}
               {missingSetup.includes('prompt de instrução') && (
-                <Link href="/settings" className="underline">
+                <Link href="/settings" className="underline underline-offset-4 hover:text-foreground">
                   Ir para configurações
                 </Link>
               )}
               {missingSetup.includes('base de conhecimento') && (
                 <>
                   {' · '}
-                  <Link href="/knowledge-base" className="underline">
+                  <Link href="/knowledge-base" className="underline underline-offset-4 hover:text-foreground">
                     Ir para base de conhecimento
                   </Link>
                 </>

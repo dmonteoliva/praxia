@@ -6,7 +6,6 @@ import { login } from '@/app/actions/auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 
 export default function LoginPage() {
   const [error, setError] = useState<string | null>(null)
@@ -24,12 +23,20 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
-      <Card className="w-full max-w-sm">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl">PráxIA</CardTitle>
-          <CardDescription>Entre na sua conta</CardDescription>
-        </CardHeader>
-        <CardContent>
+      <div className="w-full max-w-sm space-y-8">
+        {/* Brand */}
+        <div className="text-center space-y-3">
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-primary/15 border border-primary/20 mx-auto">
+            <span className="text-primary font-bold text-xl leading-none">P</span>
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">PráxIA</h1>
+            <p className="text-sm text-muted-foreground mt-1">Entre na sua conta</p>
+          </div>
+        </div>
+
+        {/* Form */}
+        <div className="rounded-2xl border bg-card p-6 shadow-sm space-y-5">
           <form action={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">E-mail</Label>
@@ -51,21 +58,20 @@ export default function LoginPage() {
                 required
               />
             </div>
-            {error && (
-              <p className="text-sm text-destructive">{error}</p>
-            )}
+            {error && <p className="text-sm text-destructive">{error}</p>}
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? 'Entrando...' : 'Entrar'}
             </Button>
           </form>
-          <p className="mt-4 text-center text-sm text-muted-foreground">
+
+          <p className="text-center text-sm text-muted-foreground">
             Não tem conta?{' '}
-            <Link href="/signup" className="underline underline-offset-4 hover:text-primary">
+            <Link href="/signup" className="font-medium text-foreground underline underline-offset-4 hover:text-primary">
               Criar conta
             </Link>
           </p>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   )
 }
